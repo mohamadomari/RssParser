@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Job Locations</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAv6a7_ogDLwzWlO4QQcD-tL-lJbBWVcFk"></script>
+    <style>
+        #map {
+            height: 400px;
+            width: 100%;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+<h1>Job Locations</h1>
+<button onclick="showAllLocations()">Show All Jobs on Map</button>
+<table id="jobsTable">
+    <thead>
+    <tr>
+        <th>#</th>
+        <th>Title</th>
+        <th>Location</th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+<div id="map"></div>
+<script>
+    let map;
+    let markers = [];
+    let jobs = [];
+
+    function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+            zoom: 4,
+            center: {lat: 24.7136, lng: 46.6753}
+        });
+        fetchJobs();
+    }
+
+    function fetchJobs() {
+        fetch('/jobs')
+            .then(response => response.json())
+            .then(data => {
+                jobs = data;
+                populateTable(jobs);
+            });
+    }
+
+    function populateTable(jobs) {
+        const tbody = document.querySelector('#jobsTable tbody');
+        tbody.innerHTML = '';
+        jobs.forEach((job, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td><a href="#" onclick="showLocation(${index})">${job.title}</a></td>
+                <td>${job.location}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    function showLocation(index) {
+        const job = jobs[index];
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({'address': job.location}, function(results, status) {
+            if (status === 'OK') {
+                map.setCenter(results[0].geometry.location);
+                clearMarkers();
+                addMarker(results[0].geometry.location, job.title);
+            } else {
+                alert('Geocode was not successful for the following reason: ' + status);
+            }
+        });
+    }
+
+    function addMarker(location, title) {
+        const marker = new google.maps.Marker({
+            position: location,
+            map: map,
+            title: title
+        });
+        markers.push(marker);
+    }
+
+    function clearMarkers() {
+        markers.forEach(marker => marker.setMap(null));
+        markers = [];
+    }
+
+    function showAllLocations() {
+        clearMarkers();
+        jobs.forEach(job => {
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({'address': job.location}, function(results, status) {
+                if (status === 'OK') {
+                    addMarker(results[0].geometry.location, job.title);
+                }
+            });
+        });
+    }
+
+    window.onload = initMap;
+</script>
+</body>
+</html>
